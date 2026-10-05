@@ -1,7 +1,8 @@
+import logfire
 from app.agents.state import AgentState
 from app.config import settings
 from langchain_groq import ChatGroq
-import logfire
+from app.agents.nodes.prompts.responder_prompt import technical_prompt, conversational_prompt
 
 # Portkey-backed LLM: fallback + cache + retry — same .invoke() interface as ChatGroq
 llm = ChatGroq(api_key=settings.GROQ_API_KEY, model=settings.GROQ_MODEL)
@@ -28,16 +29,10 @@ def generate_node(state: AgentState):
 
    if query == "CONVERSATIONAL":
       logfire.info("Generating conversational response using memory.")
-      prompt = f"""
-      You are a friendly and helpful Enterprise AI Assistant.
-      Answer the user's latest message using the CONVERSATION HISTORY below.
-
-      CONVERSATION HISTORY:
-      {history_str}
-
-      LATEST MESSAGE:
-      "{user_msg}"
-      """
+      prompt = conversational_prompt.invoke({
+            "history": history_str,
+            "user_message": user_msg
+      })
    else:
       logfire.info("Generating technical RAG response.")
       max_context_chars = 25000
@@ -50,19 +45,11 @@ def generate_node(state: AgentState):
                logfire.warning("Context truncated to fit Groq TPM limits.")
                break
 
-      prompt = f"""
-      You are a Senior Technical Architect.
-      Answer the question using the TECHNICAL CONTEXT provided.
-
-      TECHNICAL CONTEXT:
-      {full_context}
-
-      CONVERSATION HISTORY:
-      {history_str}
-
-      USER QUESTION:
-      "{user_msg}"
-      """
+      prompt = technical_prompt.invoke({
+         "context": full_context,
+         "history": history_str,
+         "user_message": user_msg
+      })
 
    with logfire.span("LLM Synthesis"):
       try:
