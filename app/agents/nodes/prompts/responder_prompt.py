@@ -34,7 +34,7 @@ LATEST USER MESSAGE:
 )
 
 
-# Technical RAG Prompt Template
+# technical prompt template
 technical_prompt = ChatPromptTemplate.from_messages(
    [
       (
