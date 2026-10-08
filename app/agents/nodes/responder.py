@@ -3,10 +3,7 @@ from app.agents.state import AgentState
 from app.config import settings
 from langchain_groq import ChatGroq
 from app.agents.nodes.prompts.responder_prompt import technical_prompt, conversational_prompt
-
-# Portkey-backed LLM: fallback + cache + retry — same .invoke() interface as ChatGroq
-llm = ChatGroq(api_key=settings.GROQ_API_KEY, model=settings.GROQ_MODEL)
-
+from app.gateway import portkey_client, extract_cache_status
 
 
 def generate_node(state: AgentState):
@@ -29,7 +26,7 @@ def generate_node(state: AgentState):
 
    if query == "CONVERSATIONAL":
       logfire.info("Generating conversational response using memory.")
-      prompt = conversational_prompt.invoke({
+      prompt_value = conversational_prompt.invoke({
             "history": history_str,
             "user_message": user_msg
       })
@@ -45,22 +42,45 @@ def generate_node(state: AgentState):
                logfire.warning("Context truncated to fit Groq TPM limits.")
                break
 
-      prompt = technical_prompt.invoke({
+      prompt_value = technical_prompt.invoke({
          "context": full_context,
          "history": history_str,
          "user_message": user_msg
       })
 
+   messages = [
+      {
+         "role": "system" if msg.type == "system" else "user" if msg.type == "human" else msg.type,
+         "content": msg.content,
+      }
+      for msg in prompt_value.to_messages()
+   ]
+
    with logfire.span("LLM Synthesis"):
       try:
-         content = llm.invoke(prompt).content
-         logfire.info("Response sythesised vida LLM.")
+         response = portkey_client.chat.completions.create(
+            model=settings.GROQ_MODEL,
+            messages=messages,
+            temperature=0.1
+         )
+         content = response.choices[0].message.content
+         cache_status = extract_cache_status(response)
+         is_cache_hit = cache_status == "HIT"
+
+         if is_cache_hit:
+            logfire.info("Gateway cache hit - response served from Portkey")
+            plan_update = state["plan"] + ["Cache: Hit"]
+            status = "Cache Hit - Instant Response"
+         else:
+            logfire.info("Response synthesised via LLM.")
+            plan_update = state["plan"]
+            status = "Response generated"
 
          return {
             "final_answer" : content,
-            "status" : "Response generated.",
-            "plan" : state["plan"],
-            "messages" : [{"role":"assistant","content":content}]
+            "status":status,
+            "plan":plan_update,
+            "messages":[{"role":"assistant","content":content}]
          }
 
       except Exception as e:

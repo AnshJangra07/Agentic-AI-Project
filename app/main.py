@@ -12,6 +12,8 @@ logfire.configure(token=os.getenv("LOGFIRE_TOKEN"))
 # Now safe to import app modules - logfire is already active
 from fastapi import FastAPI, Response
 from app.agents.graph import rag_agent
+from app.guardrails import initialize_rails, guard
+from app.gateway.client import portkey_client
 
 from pydantic import BaseModel
 from typing import Optional
@@ -19,6 +21,9 @@ from typing import Optional
 
 app = FastAPI(title="Enterprise Agentic RAG API")
 
+@app.on_event("startup")
+def startup_event():
+   initialize_rails()
 
 class QueryRequest(BaseModel):
    q : str
@@ -66,8 +71,22 @@ def query(request: QueryRequest):
    config = {"configurable":{"thread_id":thread_id}}
 
    try:
-      final_output = rag_agent.invoke(intial_state,config=config)
+      # Gate1: Nemo Guardrails - block off topic, jailbreaks and handles dialog
+      rail_fired, rail_response = guard(q)
+      if rail_fired:
+         logfire.info(f"Request blocked by guardrails | thread = {thread_id}")
+         return {
+            "question":q,
+            "answer":rail_response,
+            "thought_process": ["Intent: Guardrails Fired","Retrieval: Skipped"],
+            "status":"Blocked by guardrails",
+            "sources": []
+         }
 
+      # Gate2 :LangGraph RAG pipeline
+      # Run the graph synchronously to preserve Logfire contect variables
+      final_output = rag_agent.invoke(intial_state,config=config)
+      
       return {
          "question":q,
          "answer":final_output.get("final_answer"),

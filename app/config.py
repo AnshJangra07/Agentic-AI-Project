@@ -21,8 +21,8 @@ class Settings:
    # --- LLM GATEWAY (PORTKEY) ---
    PORTKEY_API_KEY = os.getenv("PORTKEY_API_KEY")
    GATEWAY_CONFIG = os.getenv("PORTKEY_GATEWAY_CONFIG")
-   GROQ_SLUG = os.getenv("GROQ_SLUG", "groq")
-   GROQ_SLUG_2 = os.getenv("GROQ_SLUG_2", "groq")
+   GROQ_SLUG = os.getenv("GROQ_SLUG")
+   GROQ_SLUG_2 = os.getenv("GROQ_SLUG_2")
 
    # --- OBSERVABILITY ---
    LANGSMITH_TRACING = os.getenv("LANGSMITH_TRACING", "true")

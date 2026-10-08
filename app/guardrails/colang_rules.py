@@ -338,15 +338,15 @@ define flow farewell
 YAML_CONTENT = """
 models:
   - type: main
-    engine:openai
+    engine: openai
     model: gpt-3.5-turbo
 instructions:
   - type: general
-    content: | 
-      You are an Enterprise IT Assistant specialising in: 
-      - Kubernetes (deployment, scaling, operators, networking) 
-      - Intel hardware (CPUs, FPGAs, NICs, SRIOV) 
-      - Enterprise networking (SDN, VLANs, BGP, routing) 
+    content: |
+      You are an Enterprise IT Assistant specialising in:
+      - Kubernetes (deployment, scaling, operators, networking)
+      - Intel hardware (CPUs, FPGAs, NICs, SRIOV)
+      - Enterprise networking (SDN, VLANs, BGP, routing)
       Only answer questions about these topics. Be professional and concise.
 """
 

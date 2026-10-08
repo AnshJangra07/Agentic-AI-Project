@@ -6,17 +6,15 @@ from langchain_groq import ChatGroq
 from app.config import settings
 from app.agents.nodes.prompts.planner_prompt import planner_prompt
 from typing import Literal
+from app.gateway import get_langchain_llm
 
-
-# Portkey-backed LLM: fallback + cache + retry — same .invoke() interface as ChatGroq
-llm = ChatGroq(api_key=settings.GROQ_API_KEY, model=settings.GROQ_MODEL)
-
+llm = get_langchain_llm(feature="planner")
 
 
 class PlannerDecision(BaseModel):
    """
    Structured output returned by the Planner LLM.
-
+                                                                                                                      
    The planner decides whether the latest user message can be
    handled conversationally or requires technical retrieval.
    """
